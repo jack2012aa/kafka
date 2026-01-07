@@ -17,6 +17,7 @@
 
 package org.apache.kafka.metadata.bootstrap;
 
+import org.apache.kafka.common.message.KRaftVersionRecord;
 import org.apache.kafka.common.metadata.FeatureLevelRecord;
 import org.apache.kafka.common.protocol.ApiMessage;
 import org.apache.kafka.server.common.ApiMessageAndVersion;
@@ -41,13 +42,17 @@ public class BootstrapMetadata {
 
     public static BootstrapMetadata fromVersions(
         MetadataVersion metadataVersion,
+        KRaftVersion kraftVersion,
         Map<String, Short> featureVersions,
         String source
     ) {
         List<ApiMessageAndVersion> records = new ArrayList<>();
         records.add(new ApiMessageAndVersion(new FeatureLevelRecord().
-            setName(MetadataVersion.FEATURE_NAME).
-            setFeatureLevel(metadataVersion.featureLevel()), (short) 0));
+                setName(MetadataVersion.FEATURE_NAME).
+                setFeatureLevel(metadataVersion.featureLevel()), (short) 0));
+        records.add(new ApiMessageAndVersion(new KRaftVersionRecord().
+                setVersion(kraftVersion.kraftVersionRecordVersion()).
+                setKRaftVersion(kraftVersion.featureLevel()), (short) 0));
         List<String> featureNames = new ArrayList<>(featureVersions.size());
         featureVersions.keySet().forEach(n -> {
             // metadata.version is handled in a special way, and kraft.version generates no
@@ -62,11 +67,29 @@ public class BootstrapMetadata {
             short level = featureVersions.get(featureName);
             if (level > 0) {
                 records.add(new ApiMessageAndVersion(new FeatureLevelRecord().
-                    setName(featureName).
-                    setFeatureLevel(level), (short) 0));
+                        setName(featureName).
+                        setFeatureLevel(level), (short) 0));
             }
         }
         return new BootstrapMetadata(records, metadataVersion.featureLevel(), source);
+    }
+
+    private static KRaftVersion mapLatestKRaftVersion(MetadataVersion metadataVersion) {
+        KRaftVersion latestVersion = null;
+        for (KRaftVersion kraftVersion: KRaftVersion.values()) {
+            if (kraftVersion.bootstrapMetadataVersion().isAtLeast(metadataVersion)) {
+                latestVersion = kraftVersion;
+            }
+        }
+        return latestVersion;
+    }
+
+    public static BootstrapMetadata fromVersions(
+        MetadataVersion metadataVersion,
+        Map<String, Short> featureVersions,
+        String source
+    ) {
+        return fromVersions(metadataVersion, mapLatestKRaftVersion(metadataVersion), featureVersions, source);
     }
 
     public static BootstrapMetadata fromVersion(MetadataVersion metadataVersion, String source) {
@@ -118,6 +141,10 @@ public class BootstrapMetadata {
 
     public MetadataVersion metadataVersion() {
         return MetadataVersion.fromFeatureLevel(metadataVersionLevel);
+    }
+
+    public KRaftVersion kraftVersion() {
+        for
     }
 
     public String source() {

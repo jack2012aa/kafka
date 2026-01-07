@@ -27,7 +27,7 @@ import net.sourceforge.argparse4j.inf.{ArgumentParserException, Namespace, Subpa
 import net.sourceforge.argparse4j.internal.HelpScreenException
 import org.apache.kafka.common.Uuid
 import org.apache.kafka.common.utils.{Exit, Utils}
-import org.apache.kafka.server.common.{Feature, MetadataVersion}
+import org.apache.kafka.server.common.{Feature, KRaftVersion, MetadataVersion}
 import org.apache.kafka.metadata.properties.{MetaProperties, MetaPropertiesEnsemble, MetaPropertiesVersion, PropertiesUtils}
 import org.apache.kafka.metadata.storage.{Formatter, FormatterException}
 import org.apache.kafka.raft.{DynamicVoters, QuorumConfig}
@@ -132,6 +132,7 @@ object StorageTool extends Logging {
     Option(namespace.getString("release_version")).foreach(releaseVersion => {
       try {
         formatter.setReleaseVersion(MetadataVersion.fromVersionString(releaseVersion, config.unstableFeatureVersionsEnabled))
+        KRaftVersion.fromFeatureLevel()
       } catch {
         case e: Throwable =>
           throw new TerseFailure(e.getMessage)
